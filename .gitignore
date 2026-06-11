@@ -1,0 +1,5 @@
+# local database (and sqlite WAL sidecars)
+data/
+
+__pycache__/
+*.pyc
