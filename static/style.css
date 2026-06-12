@@ -41,8 +41,67 @@ h1 { margin: 0; font-size: 22px; }
 
 .tagline { color: var(--muted); font-size: 14px; }
 
-.conn { margin-left: auto; font-size: 12px; color: #4caf7d; }
+.conn { font-size: 12px; color: #4caf7d; }
 .conn.down { color: var(--red); }
+
+.fetch-btn {
+  margin-left: auto;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.fetch-btn:hover:not(:disabled) { background: var(--accent); color: #0c1422; }
+
+.fetch-btn:disabled { opacity: 0.7; cursor: default; }
+
+.glyph { display: inline-block; }
+
+.spin { animation: spin 1.2s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fetchbar {
+  max-width: 920px;
+  margin: 10px auto 0;
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.fetchbar.running, .fetchbar.cancelling { border-left-color: var(--accent); color: var(--text); }
+.fetchbar.done { border-left-color: #4caf7d; }
+.fetchbar.cancelled { border-left-color: var(--muted); }
+.fetchbar.error { border-left-color: var(--red); color: var(--red); }
+
+.fetchbar.hidden { display: none; }
+
+.btn.small { padding: 2px 10px; font-size: 13px; }
+
+.fetchlog { width: 100%; color: var(--muted); }
+
+.fetchlog summary { cursor: pointer; font-size: 13px; }
+
+.fetchlog pre {
+  margin: 8px 0 0;
+  padding: 10px;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--muted);
+}
 
 .tabs {
   max-width: 920px;

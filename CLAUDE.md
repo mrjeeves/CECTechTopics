@@ -10,8 +10,13 @@ Everything is Python stdlib — no installs, no build step.
 
 - `server.py` — localhost web UI (`python3 server.py`, http://127.0.0.1:8765)
 - `topics.py` — CLI you use to read feedback and add topics
+- `fetch.py` — lets the UI's "⟳ Fetch new topics" button run you headless
+  (`claude -p` with this workflow); output lands in `data/fetch.log`
 - `db.py` — shared SQLite helpers (DB at `data/topics.db`, gitignored)
 - `static/` — frontend for the review UI
+
+You may be running interactively (a host typed `claude "find new topics"`)
+or headless via that button — the workflow is identical either way.
 
 ## Workflow: "find new topics" / "new batch"
 
@@ -68,6 +73,9 @@ When asked to find topics, do this:
 
 ## Rules
 
+- **Fetching only ever adds.** Never delete, clear, or re-status existing
+  topics — old pending topics stay in the queue until a host declines them
+  in the UI. A new batch goes on top of whatever is already pending.
 - Never re-add a topic that was declined, and don't add near-duplicates of
   anything in `recent` — a story counts as a duplicate if it's the same
   underlying news, even from a different outlet.

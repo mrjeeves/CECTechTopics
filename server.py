@@ -8,6 +8,9 @@
 API:
     GET  /api/topics?status=pending|highlighted|declined|all
     POST /api/topics/<id>/status   body: {"status": "highlighted"}
+    GET  /api/fetch                status of the "find new topics" bot job
+    POST /api/fetch                start a bot job (409 if one is running)
+    POST /api/fetch/cancel         stop the running bot job
 """
 
 import argparse
@@ -18,6 +21,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import db
+import fetch
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 CONTENT_TYPES = {
@@ -70,6 +74,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_file(STATIC_DIR / "index.html")
         if parsed.path == "/api/topics":
             return self.get_topics(parsed)
+        if parsed.path == "/api/fetch":
+            return self.send_json(fetch.status())
         if parsed.path.startswith("/static/"):
             target = (STATIC_DIR / parsed.path[len("/static/"):]).resolve()
             if target.is_file() and STATIC_DIR in target.parents:
@@ -77,7 +83,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"error": "not found"}, 404)
 
     def do_POST(self):
-        match = STATUS_ROUTE.match(urlparse(self.path).path)
+        path = urlparse(self.path).path
+        if path == "/api/fetch":
+            started = fetch.start()
+            return self.send_json(fetch.status(), 200 if started else 409)
+        if path == "/api/fetch/cancel":
+            fetch.cancel()
+            return self.send_json(fetch.status())
+
+        match = STATUS_ROUTE.match(path)
         if not match:
             return self.send_json({"error": "not found"}, 404)
 
