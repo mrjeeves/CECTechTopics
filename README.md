@@ -35,6 +35,12 @@ exact same thing.
 Fetching is additive: a new batch stacks on top of whatever is still pending.
 Topics only leave the queue when you decline (or highlight) them.
 
+Each card has an optional note box — type a quick *why* before (or after)
+hitting highlight/decline ("too rumor-y", "more like this"). Those reasons go
+into the feedback the bot reads on its next fetch, so they directly steer
+future batches. On decided topics, edit the note and hit **Save note** (or
+Enter).
+
 The page is quiet by default — it talks to the server only when you click
 something (**↻ Refresh** re-pulls the list) or when you return to the tab.
 The exception: while a fetch job is running, it watches the job status every

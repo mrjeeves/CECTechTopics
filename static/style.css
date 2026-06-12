@@ -201,7 +201,23 @@ h1 { margin: 0; font-size: 22px; }
 
 .summary { margin: 0 0 12px; color: #c4c9d4; font-size: 15px; }
 
-.actions { display: flex; align-items: center; gap: 8px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.reason {
+  flex: 1 1 220px;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.reason::placeholder { color: var(--muted); opacity: 0.55; }
+
+.reason:focus { outline: none; border-color: var(--accent); }
 
 .btn {
   appearance: none;

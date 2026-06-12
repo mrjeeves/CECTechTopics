@@ -61,11 +61,13 @@ async function refresh() {
   render();
 }
 
-async function setStatus(id, status) {
+async function setStatus(id, status, reason) {
+  const body = { status };
+  if (reason !== undefined) body.reason = reason;
   await fetch(`/api/topics/${id}/status`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(body),
   }).catch(() => {});
   refresh();
 }
@@ -129,30 +131,51 @@ function renderTabs() {
   ));
 }
 
-function actionButtons(topic) {
+function actionButtons(topic, reasonInput) {
+  const note = () => reasonInput.value.trim();
   const highlight = el("button",
-    { class: "btn highlight", onclick: () => setStatus(topic.id, "highlighted") },
+    { class: "btn highlight", onclick: () => setStatus(topic.id, "highlighted", note()) },
     "★ Highlight");
   const decline = el("button",
-    { class: "btn decline", onclick: () => setStatus(topic.id, "declined") },
+    { class: "btn decline", onclick: () => setStatus(topic.id, "declined", note()) },
     "✕ Decline");
   const reset = el("button",
-    { class: "btn reset", onclick: () => setStatus(topic.id, "pending") },
+    { class: "btn reset", onclick: () => setStatus(topic.id, "pending", "") },
     "↺ Reset");
 
   if (topic.status === "pending") return [highlight, decline];
   const badge = el("span", { class: `badge ${topic.status}` },
     topic.status === "highlighted" ? "★ Highlighted" : "✕ Declined");
-  return [badge, topic.status === "highlighted" ? decline : highlight, reset];
+  const save = el("button",
+    { class: "btn small", onclick: () => setStatus(topic.id, topic.status, note()) },
+    "Save note");
+  return [badge, topic.status === "highlighted" ? decline : highlight, reset, save];
 }
 
-function card(topic) {
+function card(topic, drafts) {
   const title = topic.url
     ? el("a", { href: topic.url, target: "_blank", rel: "noopener" }, topic.title)
     : topic.title;
 
   const metaParts = [topic.source || hostOf(topic.url), timeAgo(topic.created_at)]
     .filter(Boolean);
+
+  const reasonInput = el("input", {
+    class: "reason",
+    type: "text",
+    maxlength: "500",
+    placeholder: topic.status === "pending"
+      ? "why? (optional — the bot reads this next fetch)"
+      : "note for the bot — why this call?",
+  });
+  reasonInput.dataset.id = String(topic.id);
+  reasonInput.dataset.saved = topic.reason || "";
+  reasonInput.value = topic.id in drafts ? drafts[topic.id] : (topic.reason || "");
+  if (topic.status !== "pending") {
+    reasonInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") setStatus(topic.id, topic.status, reasonInput.value.trim());
+    });
+  }
 
   return el("article", { class: `card ${topic.status}` },
     el("div", { class: "card-top" },
@@ -164,18 +187,23 @@ function card(topic) {
       el("span", { class: "meta" }, metaParts.join(" · "))),
     el("h2", {}, title),
     topic.summary ? el("p", { class: "summary" }, topic.summary) : null,
-    el("div", { class: "actions" }, actionButtons(topic)));
+    el("div", { class: "actions" }, actionButtons(topic, reasonInput), reasonInput));
 }
 
 function renderList() {
   const list = document.getElementById("list");
+  // keep half-typed notes alive across re-renders (saved values defer to server)
+  const drafts = {};
+  for (const inp of list.querySelectorAll("input.reason")) {
+    if (inp.value !== inp.dataset.saved) drafts[inp.dataset.id] = inp.value;
+  }
   if (state.topics.length === 0) {
     list.replaceChildren(el("div", { class: "empty" },
       `No ${state.tab === "all" ? "" : state.tab + " "}topics. `,
       "Hit ", el("strong", {}, "⟳ Fetch new topics"), " to send the bot researching."));
     return;
   }
-  list.replaceChildren(...state.topics.map(card));
+  list.replaceChildren(...state.topics.map((t) => card(t, drafts)));
 }
 
 function renderFetch() {
