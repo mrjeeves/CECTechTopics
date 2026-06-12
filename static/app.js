@@ -70,15 +70,35 @@ async function setStatus(id, status) {
   refresh();
 }
 
+// While a fetch job is running we watch its status every few seconds so the
+// bar updates and the batch appears when it lands. The watch stops as soon
+// as the job ends — at rest the page makes no requests until you click.
+let watchTimer = null;
+let wasBusy = false;
+
+function scheduleWatch() {
+  const s = state.fetch ? state.fetch.state : null;
+  const busy = s === "running" || s === "cancelling";
+  clearTimeout(watchTimer);
+  watchTimer = busy ? setTimeout(refreshFetch, 2500) : null;
+  if (wasBusy && !busy) refresh(); // job just finished — pull in the new batch
+  wasBusy = busy;
+}
+
 async function refreshFetch() {
   try {
     const res = await fetch("/api/fetch");
     if (!res.ok) throw new Error(res.status);
     state.fetch = await res.json();
   } catch {
+    if (wasBusy) { // server hiccup mid-run: keep watching so we recover
+      clearTimeout(watchTimer);
+      watchTimer = setTimeout(refreshFetch, 2500);
+    }
     return;
   }
   renderFetch();
+  scheduleWatch();
 }
 
 async function startFetch() {
@@ -199,8 +219,15 @@ function renderFetch() {
 
 // -- boot --------------------------------------------------------------------
 
+function syncAll() {
+  refresh();
+  refreshFetch();
+}
+
 document.getElementById("fetch-btn").addEventListener("click", startFetch);
-refresh();
-refreshFetch();
-setInterval(() => { if (!document.hidden) refresh(); }, 5000);
-setInterval(() => { if (!document.hidden) refreshFetch(); }, 2000);
+document.getElementById("refresh-btn").addEventListener("click", syncAll);
+// one re-sync when you come back to the tab — not a poll
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) syncAll();
+});
+syncAll();

@@ -35,7 +35,12 @@ exact same thing.
 Fetching is additive: a new batch stacks on top of whatever is still pending.
 Topics only leave the queue when you decline (or highlight) them.
 
-The page polls every few seconds, so new topics show up while the server runs.
+The page is quiet by default — it talks to the server only when you click
+something (**↻ Refresh** re-pulls the list) or when you return to the tab.
+The exception: while a fetch job is running, it watches the job status every
+few seconds so the bar updates and the batch appears when it lands, then goes
+quiet again. The research itself runs entirely server-side, so you can kick
+it off, close the browser, and find the results waiting later.
 
 No `just`? It's all plain stdlib underneath: `python3 server.py`.
 

@@ -48,8 +48,8 @@ When asked to find topics, do this:
    python3 topics.py add-batch /tmp/batch.json     # or: ... add-batch -
    ```
 6. **Confirm and report**: run `python3 topics.py stats`, then give the hosts
-   a one-line-per-topic rundown of what you added. The UI picks new rows up
-   automatically within a few seconds.
+   a one-line-per-topic rundown of what you added. The UI shows new rows when
+   the fetch run finishes (or when a host hits ↻ Refresh).
 
 ### add-batch JSON shape
 
