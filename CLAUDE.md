@@ -26,6 +26,9 @@ When asked to find topics, do this:
    ```
    python3 topics.py feedback --window 50
    ```
+   Decisions can carry a host-typed `reason` ("too rumor-y", "more SFF builds
+   like this", "we covered AMD enough this week"). Those notes are the
+   strongest steering signal you have — follow them over any inferred pattern.
 2. **Check what's already in the DB** so you don't research duplicates
    (`add-batch` also hard-dedupes by URL and title as a backstop):
    ```
@@ -41,8 +44,9 @@ When asked to find topics, do this:
      supply/pricing, benchmarks, recalls/failures)
 4. **Curate 12–18 candidates.** Steer toward the patterns in `highlighted`
    and away from the patterns in `declined` (categories, sources, story
-   types). Mix categories — don't make the whole batch one beat. Prefer
-   reputable outlets and primary sources; link the article, not an aggregator.
+   types), honoring explicit `reason` notes above all. Mix categories — don't
+   make the whole batch one beat. Prefer reputable outlets and primary
+   sources; link the article, not an aggregator.
 5. **Insert the batch** as a JSON array via stdin or a temp file:
    ```
    python3 topics.py add-batch /tmp/batch.json     # or: ... add-batch -

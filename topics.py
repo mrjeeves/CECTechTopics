@@ -115,7 +115,7 @@ def cmd_feedback(args):
     """Emit the recent-decision window the bot uses to steer its next batch."""
     with db.connect() as conn:
         rows = conn.execute(
-            """SELECT title, summary, url, source, category, status, decided_at
+            """SELECT title, summary, url, source, category, status, reason, decided_at
                FROM topics WHERE status IN ('highlighted', 'declined')
                ORDER BY decided_at DESC LIMIT ?""",
             (args.window,),
@@ -129,6 +129,7 @@ def cmd_feedback(args):
             "category": row["category"],
             "source": row["source"],
             "summary": row["summary"][:240],
+            "reason": row["reason"][:300],
             "decided_at": row["decided_at"],
         }
         (highlighted if row["status"] == "highlighted" else declined).append(entry)
@@ -182,7 +183,8 @@ def cmd_list(args):
         return 0
     for r in rows:
         cat = f" [{r['category']}]" if r["category"] else ""
-        print(f"#{r['id']:<4} {r['status']:<11} {r['title']}{cat}")
+        note = f"  — {r['reason']}" if r["reason"] else ""
+        print(f"#{r['id']:<4} {r['status']:<11} {r['title']}{cat}{note}")
     return 0
 
 

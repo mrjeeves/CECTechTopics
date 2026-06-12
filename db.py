@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS topics (
     category    TEXT NOT NULL DEFAULT '',
     status      TEXT NOT NULL DEFAULT 'pending'
                 CHECK (status IN ('pending', 'highlighted', 'declined')),
+    reason      TEXT NOT NULL DEFAULT '',
     batch_id    TEXT NOT NULL DEFAULT '',
     created_at  TEXT NOT NULL,
     decided_at  TEXT
@@ -54,7 +55,16 @@ def connect():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn):
+    """Bring databases created by older versions up to the current schema."""
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(topics)")}
+    if "reason" not in cols:
+        conn.execute("ALTER TABLE topics ADD COLUMN reason TEXT NOT NULL DEFAULT ''")
+        conn.commit()
 
 
 def topic_dict(row):

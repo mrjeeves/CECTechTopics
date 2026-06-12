@@ -7,7 +7,9 @@
 
 API:
     GET  /api/topics?status=pending|highlighted|declined|all
-    POST /api/topics/<id>/status   body: {"status": "highlighted"}
+    POST /api/topics/<id>/status   body: {"status": "highlighted",
+                                          "reason": "optional note for the bot"}
+                                   reason omitted = unchanged; pending clears it
     GET  /api/fetch                status of the "find new topics" bot job
     POST /api/fetch                start a bot job (409 if one is running)
     POST /api/fetch/cancel         stop the running bot job
@@ -103,12 +105,18 @@ class Handler(BaseHTTPRequestHandler):
 
         topic_id = int(match.group(1))
         decided_at = None if status == "pending" else db.utcnow_iso()
+        sets, params = ["status = ?", "decided_at = ?"], [status, decided_at]
+        if status == "pending":
+            sets.append("reason = ''")
+        elif body.get("reason") is not None:
+            sets.append("reason = ?")
+            params.append(str(body["reason"]).strip()[:1000])
         conn = db.connect()
         try:
             with conn:
                 cur = conn.execute(
-                    "UPDATE topics SET status = ?, decided_at = ? WHERE id = ?",
-                    (status, decided_at, topic_id),
+                    f"UPDATE topics SET {', '.join(sets)} WHERE id = ?",
+                    (*params, topic_id),
                 )
                 row = (conn.execute("SELECT * FROM topics WHERE id = ?", (topic_id,)).fetchone()
                        if cur.rowcount else None)
