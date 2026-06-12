@@ -22,15 +22,25 @@ just setup
 # 2. start the site (leave it running)
 just dev                     # → http://127.0.0.1:8765
 
-# 3. in another terminal, have the bot build a batch
-claude "find new topics"
-
-# 4. review in the browser: highlight / decline / reset
+# 3. in the browser: hit "⟳ Fetch new topics", then highlight / decline
 ```
 
-The page polls every 5 seconds, so new topics show up while the server runs.
+The **⟳ Fetch new topics** button runs your local `claude` CLI headless
+(`claude -p`) with the workflow in [CLAUDE.md](CLAUDE.md) — so the machine
+running the server needs Claude Code installed and signed in. The status bar
+under the header shows progress, lets you cancel, and keeps the bot's rundown
+under "bot output". Running `claude "find new topics"` in a terminal does the
+exact same thing.
+
+Fetching is additive: a new batch stacks on top of whatever is still pending.
+Topics only leave the queue when you decline (or highlight) them.
+
+The page polls every few seconds, so new topics show up while the server runs.
 
 No `just`? It's all plain stdlib underneath: `python3 server.py`.
+
+To customize how the bot is launched (flags, model, a test stub), set
+`TOPICS_FETCH_CMD` to the full command before starting the server.
 
 ## Remote access (tailscale)
 
@@ -63,6 +73,7 @@ The bot's full workflow and the batch JSON shape live in [CLAUDE.md](CLAUDE.md).
 | `justfile` | `just setup` / `just dev` |
 | `server.py` | localhost web server + JSON API |
 | `topics.py` | CLI used by the bot (and humans) |
+| `fetch.py` | runs the bot headless for the UI's fetch button |
 | `db.py` | SQLite schema/helpers |
 | `static/` | the review UI |
 | `data/topics.db` | the database (created on first run, gitignored) |
