@@ -44,8 +44,11 @@ h1 { margin: 0; font-size: 22px; }
 .conn { font-size: 12px; color: #4caf7d; }
 .conn.down { color: var(--red); }
 
+.refresh-btn { margin-left: auto; color: var(--muted); }
+
+.refresh-btn:hover { color: var(--text); }
+
 .fetch-btn {
-  margin-left: auto;
   border-color: var(--accent);
   color: var(--accent);
 }
