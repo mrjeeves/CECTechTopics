@@ -9,6 +9,6 @@ setup:
     @python3 -c "import db; db.connect().close(); print('database ready:', db.DB_PATH)"
     @echo "setup complete — run 'just dev' to start the site"
 
-# run the review site (expose for tailscale with: just dev 0.0.0.0)
-dev host="127.0.0.1" port="8765":
+# run the review site, reachable on the LAN / tailscale (localhost only: just dev 127.0.0.1)
+dev host="0.0.0.0" port="8765":
     python3 server.py --host {{host}} --port {{port}}
