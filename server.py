@@ -13,6 +13,8 @@ API:
     GET  /api/fetch                status of the "find new topics" bot job
     POST /api/fetch                start a bot job (409 if one is running)
     POST /api/fetch/cancel         stop the running bot job
+    GET  /api/jokes                eligible jokes for the carousel (+ counts)
+    POST /api/jokes/<id>/react     body: {"reaction": "laugh" | "pass"}
 """
 
 import argparse
@@ -34,6 +36,7 @@ CONTENT_TYPES = {
     ".png": "image/png",
 }
 STATUS_ROUTE = re.compile(r"^/api/topics/(\d+)/status$")
+JOKE_REACT_ROUTE = re.compile(r"^/api/jokes/(\d+)/react$")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -78,6 +81,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.get_topics(parsed)
         if parsed.path == "/api/fetch":
             return self.send_json(fetch.status())
+        if parsed.path == "/api/jokes":
+            return self.get_jokes()
         if parsed.path.startswith("/static/"):
             target = (STATIC_DIR / parsed.path[len("/static/"):]).resolve()
             if target.is_file() and STATIC_DIR in target.parents:
@@ -92,6 +97,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/fetch/cancel":
             fetch.cancel()
             return self.send_json(fetch.status())
+
+        jmatch = JOKE_REACT_ROUTE.match(path)
+        if jmatch:
+            return self.react_joke(int(jmatch.group(1)))
 
         match = STATUS_ROUTE.match(path)
         if not match:
@@ -145,6 +154,40 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             conn.close()
         self.send_json({"topics": [db.topic_dict(r) for r in rows], "counts": counts})
+
+    def get_jokes(self):
+        conn = db.connect()
+        try:
+            with conn:  # commit the prune before reading
+                db.prune_jokes(conn)
+            rows = db.eligible_jokes(conn)
+            counts = db.joke_counts(conn)
+        finally:
+            conn.close()
+        self.send_json({"jokes": [db.joke_dict(r) for r in rows], "counts": counts})
+
+    def react_joke(self, joke_id):
+        body = self.read_json_body() or {}
+        reaction = body.get("reaction")
+        if reaction not in ("laugh", "pass"):
+            return self.send_json({"error": "reaction must be 'laugh' or 'pass'"}, 400)
+
+        status = "laughed" if reaction == "laugh" else "passed"
+        laugh_inc = 1 if reaction == "laugh" else 0
+        conn = db.connect()
+        try:
+            with conn:
+                cur = conn.execute(
+                    "UPDATE jokes SET status = ?, decided_at = ?, laughs = laughs + ? WHERE id = ?",
+                    (status, db.utcnow_iso(), laugh_inc, joke_id),
+                )
+                row = (conn.execute("SELECT * FROM jokes WHERE id = ?", (joke_id,)).fetchone()
+                       if cur.rowcount else None)
+        finally:
+            conn.close()
+        if row is None:
+            return self.send_json({"error": f"no joke with id {joke_id}"}, 404)
+        self.send_json({"joke": db.joke_dict(row)})
 
 
 def main():

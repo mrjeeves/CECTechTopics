@@ -10,6 +10,7 @@ Everything is Python stdlib — no installs, no build step.
 
 - `server.py` — localhost web UI (`python3 server.py`, http://127.0.0.1:8765)
 - `topics.py` — CLI you use to read feedback and add topics
+- `jokes.py` — CLI for the side jokes carousel (hosts react Laugh / Pass)
 - `fetch.py` — lets the UI's "⟳ Fetch new topics" button run you headless
   (`claude -p` with this workflow); output lands in `data/fetch.log`
 - `db.py` — shared SQLite helpers (DB at `data/topics.db`, gitignored)
@@ -51,7 +52,9 @@ When asked to find topics, do this:
    ```
    python3 topics.py add-batch /tmp/batch.json     # or: ... add-batch -
    ```
-6. **Confirm and report**: run `python3 topics.py stats`, then give the hosts
+6. **Add a few jokes** for the side carousel (see "Jokes" below) — 6–8 short,
+   clean, read-aloud one-liners via `python3 jokes.py add-batch`.
+7. **Confirm and report**: run `python3 topics.py stats`, then give the hosts
    a one-line-per-topic rundown of what you added. The UI shows new rows when
    the fetch run finishes (or when a host hits ↻ Refresh).
 
@@ -75,6 +78,29 @@ When asked to find topics, do this:
   consistent categories make the feedback breakdown useful.
 - Summaries are read aloud on stream: neutral, concrete, no hype.
 
+## Jokes carousel
+
+A small carousel in the corner of the UI shows the hosts 3 jokes at a time.
+They react **Laugh** (keep — it may resurface on a later day) or **Pass**
+(binned and forgotten). The DB keeps a rolling month of jokes and prunes older
+ones automatically. Each fetch run should top up the pool:
+
+1. See what's landed and what bombed, and avoid repeats:
+   ```
+   python3 jokes.py feedback        # laughed (emulate) vs passed (avoid)
+   python3 jokes.py recent --days 30
+   ```
+2. Add 6–8 jokes as a JSON array — objects `{"text": "...", "category": "..."}`
+   or bare strings:
+   ```
+   python3 jokes.py add-batch /tmp/jokes.json    # or: ... add-batch -
+   ```
+
+Keep them short, clean, and read-aloud friendly — PC building, GPUs, gaming,
+and tech humor land best for this audience. Lean toward the style of jokes in
+`laughed`; steer clear of anything resembling `passed`. `add-batch` dedupes by
+text, so don't worry about occasional overlap.
+
 ## Rules
 
 - **Fetching only ever adds.** Never delete, clear, or re-status existing
@@ -83,7 +109,8 @@ When asked to find topics, do this:
 - Never re-add a topic that was declined, and don't add near-duplicates of
   anything in `recent` — a story counts as a duplicate if it's the same
   underlying news, even from a different outlet.
-- Write to the DB only through `topics.py` (it normalizes, dedupes, and
-  stamps batches) — don't hand-craft SQL against `data/topics.db`.
-- Statuses are exactly: `pending`, `highlighted`, `declined`. Decisions are
-  made by the hosts in the UI, not by you.
+- Write to the DB only through `topics.py` / `jokes.py` (they normalize,
+  dedupe, and stamp batches) — don't hand-craft SQL against `data/topics.db`.
+- Statuses are exactly: `pending`, `highlighted`, `declined` (topics) and
+  `fresh`, `laughed`, `passed` (jokes). Reactions are made by the hosts in the
+  UI, not by you — only ever *add* rows.

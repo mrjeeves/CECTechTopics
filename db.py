@@ -14,6 +14,11 @@ DB_PATH = Path(__file__).resolve().parent / "data" / "topics.db"
 
 STATUSES = ("pending", "highlighted", "declined")
 
+# Jokes: a side carousel the hosts react to. Laughed jokes can resurface on a
+# later day; passed jokes are binned. We keep a rolling month and prune older.
+JOKE_STATUSES = ("fresh", "laughed", "passed")
+JOKE_RETENTION_DAYS = 30
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS topics (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,6 +38,21 @@ CREATE TABLE IF NOT EXISTS topics (
 CREATE INDEX IF NOT EXISTS idx_topics_status ON topics(status);
 CREATE INDEX IF NOT EXISTS idx_topics_title_key ON topics(title_key);
 CREATE INDEX IF NOT EXISTS idx_topics_url ON topics(url);
+
+CREATE TABLE IF NOT EXISTS jokes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    text        TEXT NOT NULL,
+    text_key    TEXT NOT NULL,
+    category    TEXT NOT NULL DEFAULT '',
+    status      TEXT NOT NULL DEFAULT 'fresh'
+                CHECK (status IN ('fresh', 'laughed', 'passed')),
+    laughs      INTEGER NOT NULL DEFAULT 0,
+    batch_id    TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL,
+    decided_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_jokes_status ON jokes(status);
+CREATE INDEX IF NOT EXISTS idx_jokes_text_key ON jokes(text_key);
 """
 
 
@@ -78,4 +98,42 @@ def status_counts(conn):
     for row in conn.execute("SELECT status, COUNT(*) AS n FROM topics GROUP BY status"):
         counts[row["status"]] = row["n"]
     counts["all"] = sum(counts[s] for s in STATUSES)
+    return counts
+
+
+# -- jokes -------------------------------------------------------------------
+
+def joke_dict(row):
+    d = dict(row)
+    d.pop("text_key", None)
+    return d
+
+
+def prune_jokes(conn, days=JOKE_RETENTION_DAYS):
+    """Delete jokes older than the retention window. Returns rows removed."""
+    cur = conn.execute(
+        "DELETE FROM jokes WHERE created_at < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', ?)",
+        (f"-{days} days",),
+    )
+    return cur.rowcount
+
+
+def eligible_jokes(conn, limit=60):
+    """Jokes the spinner may show: not binned, and laughed ones only resurface
+    on a day after they were laughed. Fresh first, then crowd-pleasers."""
+    return conn.execute(
+        """SELECT * FROM jokes
+           WHERE status != 'passed'
+             AND (status = 'fresh' OR decided_at IS NULL OR date(decided_at) < date('now'))
+           ORDER BY (status = 'fresh') DESC, laughs DESC, created_at DESC
+           LIMIT ?""",
+        (limit,),
+    ).fetchall()
+
+
+def joke_counts(conn):
+    counts = {s: 0 for s in JOKE_STATUSES}
+    for row in conn.execute("SELECT status, COUNT(*) AS n FROM jokes GROUP BY status"):
+        counts[row["status"]] = row["n"]
+    counts["all"] = sum(counts[s] for s in JOKE_STATUSES)
     return counts
