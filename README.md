@@ -20,7 +20,7 @@ Needs [`just`](https://github.com/casey/just) (single binary) and Python 3.9+.
 just setup
 
 # 2. start the site (leave it running)
-just dev                     # → http://127.0.0.1:8765
+just dev                     # → http://127.0.0.1:8765  (also reachable on the LAN)
 
 # 3. in the browser: hit "⟳ Fetch new topics", then highlight / decline
 ```
@@ -53,13 +53,17 @@ No `just`? It's all plain stdlib underneath: `python3 server.py`.
 To customize how the bot is launched (flags, model, a test stub), set
 `TOPICS_FETCH_CMD` to the full command before starting the server.
 
-## Remote access (tailscale)
+## Remote access (tailscale / LAN)
 
-Bind to all interfaces, then open `http://<tailscale-ip>:8765` from the other
-machine:
+`just dev` binds to all interfaces by default, so a co-host can open
+`http://<this-machine-ip>:8765` (LAN IP or tailscale IP) from another machine
+on the same network — no extra flags. The site has no auth, so keep it to
+networks you trust (your LAN or tailnet).
+
+Want localhost-only instead? Pass the bind address:
 
 ```bash
-just dev 0.0.0.0             # or: python3 server.py --host 0.0.0.0
+just dev 127.0.0.1          # or: python3 server.py --host 127.0.0.1
 ```
 
 ## CLI
