@@ -47,6 +47,11 @@ later day); **Pass** bins it for good. The bot adds a handful of jokes on each
 fetch, the DB keeps a rolling month and prunes older ones, and the panel
 collapses with the – button if it's in the way.
 
+For hands-off display on stream, the **⤓ Auto-scroll** toggle in the tab row
+ping-pongs the feed down and back up at one steady speed; the slider next to it
+sets that speed. Both the on/off state and the speed are remembered between
+sessions.
+
 The page is quiet by default — it talks to the server only when you click
 something (**↻ Refresh** re-pulls the list) or when you return to the tab.
 The exception: while a fetch job is running, it watches the job status every

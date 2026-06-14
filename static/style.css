@@ -106,11 +106,41 @@ h1 { margin: 0; font-size: 22px; }
   color: var(--muted);
 }
 
+.tabsrow {
+  max-width: 920px;
+  margin: 10px auto 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .tabs {
   max-width: 920px;
   margin: 10px auto 0;
   display: flex;
   gap: 4px;
+}
+
+.tabsrow .tabs { max-width: none; margin: 0; flex: 0 1 auto; }
+
+.autoscroll {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.autoscroll-toggle { color: var(--muted); white-space: nowrap; }
+
+.autoscroll-toggle.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.autoscroll-speed {
+  width: 120px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .tab {

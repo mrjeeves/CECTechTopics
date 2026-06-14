@@ -17,7 +17,16 @@
       <span id="conn" class="conn" title="server connection">●</span>
     </div>
     <div id="fetchbar" class="fetchbar hidden"></div>
-    <nav id="tabs" class="tabs"></nav>
+    <div class="tabsrow">
+      <nav id="tabs" class="tabs"></nav>
+      <div class="autoscroll">
+        <button id="autoscroll-toggle" class="btn autoscroll-toggle" role="switch"
+                aria-checked="false" title="ping-pong auto-scroll the feed">⤓ Auto-scroll</button>
+        <input id="autoscroll-speed" class="autoscroll-speed" type="range"
+               min="10" max="600" step="10" value="80" title="scroll speed"
+               aria-label="auto-scroll speed">
+      </div>
+    </div>
   </header>
 
   <main id="list" class="list"></main>
