@@ -41,12 +41,19 @@ into the feedback the bot reads on its next fetch, so they directly steer
 future batches. On decided topics, edit the note and hit **Save note** (or
 Enter).
 
+In the bottom-left corner, the **😂 Jokes** carousel shows 3 jokes at a time,
+rotating every few minutes. **Laugh** keeps a joke (it may resurface on a
+later day); **Pass** bins it for good. The bot adds a handful of jokes on each
+fetch, the DB keeps a rolling month and prunes older ones, and the panel
+collapses with the – button if it's in the way.
+
 The page is quiet by default — it talks to the server only when you click
 something (**↻ Refresh** re-pulls the list) or when you return to the tab.
 The exception: while a fetch job is running, it watches the job status every
 few seconds so the bar updates and the batch appears when it lands, then goes
-quiet again. The research itself runs entirely server-side, so you can kick
-it off, close the browser, and find the results waiting later.
+quiet again. The jokes rotate client-side with no polling. The research itself
+runs entirely server-side, so you can kick it off, close the browser, and find
+the results waiting later.
 
 No `just`? It's all plain stdlib underneath: `python3 server.py`.
 
@@ -79,6 +86,16 @@ python3 topics.py list --status pending
 python3 topics.py stats
 ```
 
+Jokes have a parallel CLI:
+
+```bash
+python3 jokes.py feedback                # recently laughed / passed jokes (JSON)
+python3 jokes.py add-batch jokes.json    # insert a JSON array of jokes (dedupes)
+python3 jokes.py list --status laughed
+python3 jokes.py prune                   # drop jokes past the 30-day window
+python3 jokes.py stats
+```
+
 The bot's full workflow and the batch JSON shape live in [CLAUDE.md](CLAUDE.md).
 
 ## Layout
@@ -88,6 +105,7 @@ The bot's full workflow and the batch JSON shape live in [CLAUDE.md](CLAUDE.md).
 | `justfile` | `just setup` / `just dev` |
 | `server.py` | localhost web server + JSON API |
 | `topics.py` | CLI used by the bot (and humans) |
+| `jokes.py` | CLI for the jokes carousel |
 | `fetch.py` | runs the bot headless for the UI's fetch button |
 | `db.py` | SQLite schema/helpers |
 | `static/` | the review UI |

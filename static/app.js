@@ -83,7 +83,7 @@ function scheduleWatch() {
   const busy = s === "running" || s === "cancelling";
   clearTimeout(watchTimer);
   watchTimer = busy ? setTimeout(refreshFetch, 2500) : null;
-  if (wasBusy && !busy) refresh(); // job just finished — pull in the new batch
+  if (wasBusy && !busy) { refresh(); loadJokes(); } // job done — pull in new topics & jokes
   wasBusy = busy;
 }
 
@@ -231,7 +231,8 @@ function renderFetch() {
   } else if (job.state === "cancelling") {
     pieces.push("Stopping…");
   } else if (job.state === "done") {
-    pieces.push(`Last fetch added ${job.added} topic${job.added === 1 ? "" : "s"} · ${timeAgo(job.finished_at)}`);
+    const jk = job.jokes_added ? `, ${job.jokes_added} joke${job.jokes_added === 1 ? "" : "s"}` : "";
+    pieces.push(`Last fetch added ${job.added} topic${job.added === 1 ? "" : "s"}${jk} · ${timeAgo(job.finished_at)}`);
   } else if (job.state === "cancelled") {
     pieces.push(`Fetch cancelled (${job.added ?? 0} added) · ${timeAgo(job.finished_at)}`);
   } else if (job.state === "error") {
@@ -245,15 +246,125 @@ function renderFetch() {
   bar.replaceChildren(...pieces);
 }
 
+// -- jokes carousel ----------------------------------------------------------
+// Shows 3 jokes at a time, rotating every few minutes (client-side, no polling).
+// Laugh keeps a joke (it may resurface on a later day); Pass bins it for good.
+
+const JOKE_SLOTS = 3;
+const JOKE_ROTATE_MS = 3 * 60 * 1000; // a few minutes per set of three
+const jokesState = { pool: [], slots: [], cursor: 0 };
+
+async function loadJokes() {
+  try {
+    const res = await fetch("/api/jokes");
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    jokesState.pool = data.jokes || [];
+    jokesState.cursor = 0;
+    fillJokeSlots();
+  } catch {
+    return; // leave whatever's on screen
+  }
+  renderJokes();
+}
+
+// Pull the next unused joke from the pool, cycling round; null if the pool is
+// smaller than the slots it needs to fill.
+function takeNextJoke(used) {
+  const pool = jokesState.pool;
+  if (pool.length === 0) return null;
+  for (let tries = 0; tries < pool.length; tries++) {
+    const joke = pool[jokesState.cursor % pool.length];
+    jokesState.cursor++;
+    if (!used.has(joke.id)) return joke;
+  }
+  return null;
+}
+
+function fillJokeSlots() {
+  const used = new Set();
+  jokesState.slots = [];
+  for (let i = 0; i < JOKE_SLOTS; i++) {
+    const joke = takeNextJoke(used);
+    jokesState.slots.push(joke);
+    if (joke) used.add(joke.id);
+  }
+}
+
+function rotateJokes() {
+  if (document.hidden || jokesState.pool.length <= JOKE_SLOTS) return;
+  fillJokeSlots();
+  renderJokes();
+}
+
+async function reactJoke(id, reaction) {
+  fetch(`/api/jokes/${id}/react`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reaction }),
+  }).catch(() => {});
+  // resolve locally: drop it from the pool and refill just its slot
+  jokesState.pool = jokesState.pool.filter((j) => j.id !== id);
+  const used = new Set(jokesState.slots.filter(Boolean).map((j) => j.id));
+  used.delete(id);
+  jokesState.slots = jokesState.slots.map((j) => {
+    if (j && j.id === id) {
+      const next = takeNextJoke(used);
+      if (next) used.add(next.id);
+      return next;
+    }
+    return j;
+  });
+  renderJokes();
+  if (jokesState.pool.length === 0) loadJokes();
+}
+
+function jokeCard(joke) {
+  if (!joke) return null;
+  return el("div", { class: "joke" },
+    el("p", { class: "joke-text" }, joke.text),
+    el("div", { class: "joke-actions" },
+      el("button", { class: "btn laugh", onclick: () => reactJoke(joke.id, "laugh") }, "😂 Laugh"),
+      el("button", { class: "btn pass", onclick: () => reactJoke(joke.id, "pass") }, "✕ Pass")));
+}
+
+function renderJokes() {
+  const body = document.getElementById("jokes-body");
+  const count = document.getElementById("jokes-count");
+  count.textContent = jokesState.pool.length ? `(${jokesState.pool.length})` : "";
+  const cards = jokesState.slots.map(jokeCard).filter(Boolean);
+  if (cards.length === 0) {
+    body.replaceChildren(el("div", { class: "jokes-empty" },
+      "No jokes yet — they arrive with the next fetch."));
+    return;
+  }
+  body.replaceChildren(...cards);
+}
+
+function toggleJokes(force) {
+  const panel = document.getElementById("jokes");
+  const collapsed = force !== undefined ? force : !panel.classList.contains("collapsed");
+  panel.classList.toggle("collapsed", collapsed);
+  document.getElementById("jokes-toggle").textContent = collapsed ? "+" : "–";
+  try { localStorage.setItem("jokesCollapsed", collapsed ? "1" : "0"); } catch {}
+}
+
 // -- boot --------------------------------------------------------------------
 
 function syncAll() {
   refresh();
   refreshFetch();
+  loadJokes();
 }
 
 document.getElementById("fetch-btn").addEventListener("click", startFetch);
 document.getElementById("refresh-btn").addEventListener("click", syncAll);
+document.getElementById("jokes-toggle").addEventListener("click", () => toggleJokes());
+document.getElementById("jokes-head").addEventListener("click", (e) => {
+  if (e.target.id !== "jokes-toggle") toggleJokes();
+});
+try { if (localStorage.getItem("jokesCollapsed") === "1") toggleJokes(true); } catch {}
+setInterval(rotateJokes, JOKE_ROTATE_MS);
 // one re-sync when you come back to the tab — not a poll
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) syncAll();
