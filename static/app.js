@@ -349,6 +349,63 @@ function toggleJokes(force) {
   try { localStorage.setItem("jokesCollapsed", collapsed ? "1" : "0"); } catch {}
 }
 
+// -- autoscroll --------------------------------------------------------------
+// Ping-pongs the whole page (the topic feed) down then back up at one constant,
+// host-set speed. Toggle and speed both persist in localStorage. The sticky
+// header — including these controls — stays put while the feed scrolls.
+
+let autoOn = false;
+let autoSpeed = 80;   // pixels per second, same magnitude up and down
+let autoDir = 1;      // 1 = down, -1 = up
+let autoRAF = null;
+let autoLastT = null;
+
+// Pure step: where to scroll next, and which way to head, given the clamp.
+// Reversing only flips direction, so the up and down passes share one speed.
+function nextScroll(y, dir, speed, dt, max) {
+  let ny = y + dir * speed * dt;
+  if (ny >= max) return { y: max, dir: -1 };
+  if (ny <= 0) return { y: 0, dir: 1 };
+  return { y: ny, dir };
+}
+
+function autoMaxScroll() {
+  return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+}
+
+function autoTick(t) {
+  if (!autoOn) { autoRAF = null; return; }
+  if (autoLastT === null) autoLastT = t;
+  const dt = Math.min(0.1, (t - autoLastT) / 1000); // clamp gaps (e.g. tab was hidden)
+  autoLastT = t;
+  const max = autoMaxScroll();
+  if (max > 0) {
+    const step = nextScroll(window.scrollY, autoDir, autoSpeed, dt, max);
+    autoDir = step.dir;
+    window.scrollTo(0, step.y);
+  }
+  autoRAF = requestAnimationFrame(autoTick);
+}
+
+function applyAutoUI() {
+  const btn = document.getElementById("autoscroll-toggle");
+  btn.classList.toggle("active", autoOn);
+  btn.setAttribute("aria-checked", autoOn ? "true" : "false");
+}
+
+function setAutoOn(on) {
+  autoOn = on;
+  applyAutoUI();
+  try { localStorage.setItem("autoscrollOn", on ? "1" : "0"); } catch {}
+  if (on && autoRAF === null) { autoLastT = null; autoRAF = requestAnimationFrame(autoTick); }
+  if (!on && autoRAF !== null) { cancelAnimationFrame(autoRAF); autoRAF = null; }
+}
+
+function setAutoSpeed(px) {
+  autoSpeed = px;
+  try { localStorage.setItem("autoscrollSpeed", String(px)); } catch {}
+}
+
 // -- boot --------------------------------------------------------------------
 
 function syncAll() {
@@ -365,6 +422,16 @@ document.getElementById("jokes-head").addEventListener("click", (e) => {
 });
 try { if (localStorage.getItem("jokesCollapsed") === "1") toggleJokes(true); } catch {}
 setInterval(rotateJokes, JOKE_ROTATE_MS);
+
+const autoRange = document.getElementById("autoscroll-speed");
+try {
+  const savedSpeed = parseInt(localStorage.getItem("autoscrollSpeed"), 10);
+  if (!Number.isNaN(savedSpeed)) { autoSpeed = savedSpeed; autoRange.value = String(savedSpeed); }
+} catch {}
+document.getElementById("autoscroll-toggle").addEventListener("click", () => setAutoOn(!autoOn));
+autoRange.addEventListener("input", () => setAutoSpeed(parseInt(autoRange.value, 10)));
+try { setAutoOn(localStorage.getItem("autoscrollOn") === "1"); } catch { applyAutoUI(); }
+
 // one re-sync when you come back to the tab — not a poll
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) syncAll();
