@@ -254,18 +254,79 @@ const JOKE_SLOTS = 3;
 const JOKE_ROTATE_MS = 3 * 60 * 1000; // a few minutes per set of three
 const jokesState = { pool: [], slots: [], cursor: 0 };
 
-async function loadJokes({ advance = false } = {}) {
+async function loadJokes() {
   try {
     const res = await fetch("/api/jokes");
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     jokesState.pool = data.jokes || [];
-    if (!advance) jokesState.cursor = 0; // advance keeps cycling to the next trio
+    jokesState.cursor = 0;
     fillJokeSlots();
   } catch {
     return; // leave whatever's on screen
   }
   renderJokes();
+}
+
+// -- jokes fetch (generate via the bot) --------------------------------------
+// Mirrors the topics fetch: POST starts a headless `claude` run that adds
+// jokes; we watch its status while it runs and pull in the new jokes when done.
+let jokesJob = null;
+let jokesWatch = null;
+let jokesWasBusy = false;
+
+async function startJokesFetch() {
+  await fetch("/api/jokes/fetch", { method: "POST" }).catch(() => {});
+  refreshJokesFetch();
+}
+
+async function cancelJokesFetch() {
+  await fetch("/api/jokes/fetch/cancel", { method: "POST" }).catch(() => {});
+  refreshJokesFetch();
+}
+
+async function refreshJokesFetch() {
+  try {
+    const res = await fetch("/api/jokes/fetch");
+    if (!res.ok) throw new Error(res.status);
+    jokesJob = await res.json();
+  } catch {
+    if (jokesWasBusy) { clearTimeout(jokesWatch); jokesWatch = setTimeout(refreshJokesFetch, 2500); }
+    return;
+  }
+  renderJokesFetch();
+  scheduleJokesWatch();
+}
+
+function jokesFetchBusy() {
+  return jokesJob && (jokesJob.state === "running" || jokesJob.state === "cancelling");
+}
+
+function scheduleJokesWatch() {
+  const busy = jokesFetchBusy();
+  clearTimeout(jokesWatch);
+  jokesWatch = busy ? setTimeout(refreshJokesFetch, 2500) : null;
+  if (jokesWasBusy && !busy) loadJokes(); // job finished — show the new jokes
+  jokesWasBusy = busy;
+}
+
+function renderJokesFetch() {
+  if (!jokesJob) return;
+  const busy = jokesFetchBusy();
+  const btn = document.getElementById("jokes-fetch");
+  btn.classList.toggle("spinning", busy);
+  btn.title = busy ? "cancel" : "fetch new jokes";
+
+  const status = document.getElementById("jokes-fetch-status");
+  status.title = "";
+  if (jokesJob.state === "running") status.textContent = "fetching…";
+  else if (jokesJob.state === "cancelling") status.textContent = "stopping…";
+  else if (jokesJob.state === "done") status.textContent = `added ${jokesJob.jokes_added}`;
+  else if (jokesJob.state === "cancelled") status.textContent = "cancelled";
+  else if (jokesJob.state === "error") {
+    status.textContent = "failed";
+    status.title = jokesJob.log_tail || "";
+  } else status.textContent = "";
 }
 
 // Pull the next unused joke from the pool, cycling round; null if the pool is
@@ -441,18 +502,16 @@ function setAutoSpeed(px) {
 function syncAll() {
   refresh();
   refreshFetch();
+  refreshJokesFetch();
   loadJokes();
 }
 
 document.getElementById("fetch-btn").addEventListener("click", startFetch);
 document.getElementById("refresh-btn").addEventListener("click", syncAll);
 document.getElementById("jokes-toggle").addEventListener("click", () => toggleJokes());
-const jokesRefreshBtn = document.getElementById("jokes-refresh");
-jokesRefreshBtn.addEventListener("click", () => {
-  loadJokes({ advance: true });               // refresh jokes alone, next trio
-  jokesRefreshBtn.classList.add("spinning");
+document.getElementById("jokes-fetch").addEventListener("click", () => {
+  if (jokesFetchBusy()) cancelJokesFetch(); else startJokesFetch();
 });
-jokesRefreshBtn.addEventListener("animationend", () => jokesRefreshBtn.classList.remove("spinning"));
 try { if (localStorage.getItem("jokesCollapsed") === "1") toggleJokes(true); } catch {}
 setInterval(rotateJokes, JOKE_ROTATE_MS);
 

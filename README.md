@@ -41,11 +41,12 @@ into the feedback the bot reads on its next fetch, so they directly steer
 future batches. On decided topics, edit the note and hit **Save note** (or
 Enter).
 
-In the bottom-left corner, the **😂 Jokes** carousel shows 3 jokes at a time,
-rotating every few minutes. **Laugh** keeps a joke (it may resurface on a
-later day); **Pass** bins it for good. The bot adds a handful of jokes on each
-fetch, the DB keeps a rolling month and prunes older ones, and the panel
-collapses with the – button if it's in the way.
+The **😂 Jokes** sidebar shows 3 jokes at a time, rotating every few minutes.
+**Laugh** keeps a joke (it may resurface on a later day); **Pass** bins it for
+good. Its **⟳** button runs a jokes-only bot fetch to add fresh jokes (the
+carousel's equivalent of the topics Fetch — no topic run needed), and every
+topics fetch tops the pool up too. The DB keeps a rolling month and prunes
+older ones, and the 😂 spine collapses the sidebar when you need the width.
 
 For hands-off display on stream, the **⤓ Auto-scroll** toggle in the tab row
 ping-pongs the feed down and back up at one steady speed; the slider next to it

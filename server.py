@@ -15,6 +15,9 @@ API:
     POST /api/fetch/cancel         stop the running bot job
     GET  /api/jokes                eligible jokes for the carousel (+ counts)
     POST /api/jokes/<id>/react     body: {"reaction": "laugh" | "pass"}
+    GET  /api/jokes/fetch          status of the "fetch jokes" bot job
+    POST /api/jokes/fetch          start a jokes bot job (409 if one is running)
+    POST /api/jokes/fetch/cancel   stop the running jokes bot job
 """
 
 import argparse
@@ -81,6 +84,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.get_topics(parsed)
         if parsed.path == "/api/fetch":
             return self.send_json(fetch.status())
+        if parsed.path == "/api/jokes/fetch":
+            return self.send_json(fetch.jokes_status())
         if parsed.path == "/api/jokes":
             return self.get_jokes()
         if parsed.path.startswith("/static/"):
@@ -97,6 +102,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/fetch/cancel":
             fetch.cancel()
             return self.send_json(fetch.status())
+        if path == "/api/jokes/fetch":
+            started = fetch.jokes_start()
+            return self.send_json(fetch.jokes_status(), 200 if started else 409)
+        if path == "/api/jokes/fetch/cancel":
+            fetch.jokes_cancel()
+            return self.send_json(fetch.jokes_status())
 
         jmatch = JOKE_REACT_ROUTE.match(path)
         if jmatch:
