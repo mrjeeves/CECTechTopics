@@ -11,8 +11,9 @@ Everything is Python stdlib — no installs, no build step.
 - `server.py` — localhost web UI (`python3 server.py`, http://127.0.0.1:8765)
 - `topics.py` — CLI you use to read feedback and add topics
 - `jokes.py` — CLI for the side jokes carousel (hosts react Laugh / Pass)
-- `fetch.py` — lets the UI's "⟳ Fetch new topics" button run you headless
-  (`claude -p` with this workflow); output lands in `data/fetch.log`
+- `fetch.py` — lets the UI run you headless (`claude -p`): the "⟳ Fetch new
+  topics" button (topics + jokes) and the jokes panel's "⟳" button (jokes
+  only); output lands in `data/fetch.log` / `data/jokes_fetch.log`
 - `db.py` — shared SQLite helpers (DB at `data/topics.db`, gitignored)
 - `static/` — frontend for the review UI
 
@@ -80,10 +81,12 @@ When asked to find topics, do this:
 
 ## Jokes carousel
 
-A small carousel in the corner of the UI shows the hosts 3 jokes at a time.
-They react **Laugh** (keep — it may resurface on a later day) or **Pass**
-(binned and forgotten). The DB keeps a rolling month of jokes and prunes older
-ones automatically. Each fetch run should top up the pool:
+A small sidebar in the UI shows the hosts 3 jokes at a time. They react
+**Laugh** (keep — it may resurface on a later day) or **Pass** (binned and
+forgotten). The DB keeps a rolling month of jokes and prunes older ones
+automatically. The panel's own "⟳" button runs a jokes-only fetch (so hosts
+can refill jokes without a full topic run), and every topic fetch tops the
+pool up too. Either way:
 
 1. See what's landed and what bombed, and avoid repeats:
    ```
