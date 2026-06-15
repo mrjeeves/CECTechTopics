@@ -12,6 +12,9 @@
 
 * { box-sizing: border-box; }
 
+/* keep programmatic auto-scroll instant — smooth would fight per-frame scrollTo */
+html { scroll-behavior: auto; }
+
 body {
   margin: 0;
   background: var(--bg);

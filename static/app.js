@@ -359,8 +359,8 @@ let autoOn = false;
 // The slider is an abstract position (0..1000) mapped to speed on an
 // exponential curve, so the lower half of the travel covers slow speeds with
 // fine, granular control — handy for a gentle reading crawl on stream.
-const SCROLL_MIN = 2;       // px/sec at the slow end of the slider
-const SCROLL_MAX = 600;     // px/sec at the fast end
+const SCROLL_MIN = 10;      // px/sec at the slow end of the slider
+const SCROLL_MAX = 150;     // px/sec at the fast end
 const SCROLL_STEPS = 1000;  // slider resolution
 const SCROLL_DEFAULT = 20;  // px/sec, a calm default
 
@@ -368,6 +368,7 @@ let autoSpeed = SCROLL_DEFAULT; // pixels per second, same magnitude up and down
 let autoDir = 1;                // 1 = down, -1 = up
 let autoRAF = null;
 let autoLastT = null;
+let autoPos = 0;                // our own fractional scroll position, in px
 
 function speedFromPos(pos) {
   return SCROLL_MIN * Math.pow(SCROLL_MAX / SCROLL_MIN, pos / SCROLL_STEPS);
@@ -397,14 +398,19 @@ function autoMaxScroll() {
 
 function autoTick(t) {
   if (!autoOn) { autoRAF = null; return; }
-  if (autoLastT === null) autoLastT = t;
+  if (autoLastT === null) { autoLastT = t; autoPos = window.scrollY; } // sync on (re)start
   const dt = Math.min(0.1, (t - autoLastT) / 1000); // clamp gaps (e.g. tab was hidden)
   autoLastT = t;
   const max = autoMaxScroll();
   if (max > 0) {
-    const step = nextScroll(window.scrollY, autoDir, autoSpeed, dt, max);
+    // Integrate our own fractional position rather than reading window.scrollY
+    // back each frame: browsers (notably on Windows / HiDPI) quantize scrollY
+    // to whole pixels, which would swallow the sub-pixel-per-frame motion at
+    // slow speeds and make the real rate fall short of the advertised one.
+    const step = nextScroll(autoPos, autoDir, autoSpeed, dt, max);
     autoDir = step.dir;
-    window.scrollTo(0, step.y);
+    autoPos = step.y;
+    window.scrollTo(0, autoPos);
   }
   autoRAF = requestAnimationFrame(autoTick);
 }
