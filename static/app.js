@@ -254,13 +254,13 @@ const JOKE_SLOTS = 3;
 const JOKE_ROTATE_MS = 3 * 60 * 1000; // a few minutes per set of three
 const jokesState = { pool: [], slots: [], cursor: 0 };
 
-async function loadJokes() {
+async function loadJokes({ advance = false } = {}) {
   try {
     const res = await fetch("/api/jokes");
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     jokesState.pool = data.jokes || [];
-    jokesState.cursor = 0;
+    if (!advance) jokesState.cursor = 0; // advance keeps cycling to the next trio
     fillJokeSlots();
   } catch {
     return; // leave whatever's on screen
@@ -447,6 +447,12 @@ function syncAll() {
 document.getElementById("fetch-btn").addEventListener("click", startFetch);
 document.getElementById("refresh-btn").addEventListener("click", syncAll);
 document.getElementById("jokes-toggle").addEventListener("click", () => toggleJokes());
+const jokesRefreshBtn = document.getElementById("jokes-refresh");
+jokesRefreshBtn.addEventListener("click", () => {
+  loadJokes({ advance: true });               // refresh jokes alone, next trio
+  jokesRefreshBtn.classList.add("spinning");
+});
+jokesRefreshBtn.addEventListener("animationend", () => jokesRefreshBtn.classList.remove("spinning"));
 try { if (localStorage.getItem("jokesCollapsed") === "1") toggleJokes(true); } catch {}
 setInterval(rotateJokes, JOKE_ROTATE_MS);
 
