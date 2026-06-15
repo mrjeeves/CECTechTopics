@@ -342,10 +342,11 @@ function renderJokes() {
 }
 
 function toggleJokes(force) {
-  const panel = document.getElementById("jokes");
-  const collapsed = force !== undefined ? force : !panel.classList.contains("collapsed");
-  panel.classList.toggle("collapsed", collapsed);
-  document.getElementById("jokes-toggle").textContent = collapsed ? "+" : "–";
+  const collapsed = force !== undefined ? force : !document.body.classList.contains("jokes-collapsed");
+  document.body.classList.toggle("jokes-collapsed", collapsed);
+  const btn = document.getElementById("jokes-toggle");
+  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  btn.title = collapsed ? "show jokes" : "hide jokes";
   try { localStorage.setItem("jokesCollapsed", collapsed ? "1" : "0"); } catch {}
 }
 
@@ -355,10 +356,31 @@ function toggleJokes(force) {
 // header — including these controls — stays put while the feed scrolls.
 
 let autoOn = false;
-let autoSpeed = 80;   // pixels per second, same magnitude up and down
-let autoDir = 1;      // 1 = down, -1 = up
+// The slider is an abstract position (0..1000) mapped to speed on an
+// exponential curve, so the lower half of the travel covers slow speeds with
+// fine, granular control — handy for a gentle reading crawl on stream.
+const SCROLL_MIN = 2;       // px/sec at the slow end of the slider
+const SCROLL_MAX = 600;     // px/sec at the fast end
+const SCROLL_STEPS = 1000;  // slider resolution
+const SCROLL_DEFAULT = 20;  // px/sec, a calm default
+
+let autoSpeed = SCROLL_DEFAULT; // pixels per second, same magnitude up and down
+let autoDir = 1;                // 1 = down, -1 = up
 let autoRAF = null;
 let autoLastT = null;
+
+function speedFromPos(pos) {
+  return SCROLL_MIN * Math.pow(SCROLL_MAX / SCROLL_MIN, pos / SCROLL_STEPS);
+}
+
+function posFromSpeed(px) {
+  const clamped = Math.min(SCROLL_MAX, Math.max(SCROLL_MIN, px));
+  return Math.round(SCROLL_STEPS * Math.log(clamped / SCROLL_MIN) / Math.log(SCROLL_MAX / SCROLL_MIN));
+}
+
+function fmtSpeed(px) {
+  return (px < 10 ? px.toFixed(1) : String(Math.round(px))) + " px/s";
+}
 
 // Pure step: where to scroll next, and which way to head, given the clamp.
 // Reversing only flips direction, so the up and down passes share one speed.
@@ -403,7 +425,9 @@ function setAutoOn(on) {
 
 function setAutoSpeed(px) {
   autoSpeed = px;
-  try { localStorage.setItem("autoscrollSpeed", String(px)); } catch {}
+  const readout = document.getElementById("autoscroll-readout");
+  if (readout) readout.textContent = fmtSpeed(px);
+  try { localStorage.setItem("autoscrollSpeed", String(Math.round(px * 100) / 100)); } catch {}
 }
 
 // -- boot --------------------------------------------------------------------
@@ -417,19 +441,19 @@ function syncAll() {
 document.getElementById("fetch-btn").addEventListener("click", startFetch);
 document.getElementById("refresh-btn").addEventListener("click", syncAll);
 document.getElementById("jokes-toggle").addEventListener("click", () => toggleJokes());
-document.getElementById("jokes-head").addEventListener("click", (e) => {
-  if (e.target.id !== "jokes-toggle") toggleJokes();
-});
 try { if (localStorage.getItem("jokesCollapsed") === "1") toggleJokes(true); } catch {}
 setInterval(rotateJokes, JOKE_ROTATE_MS);
 
 const autoRange = document.getElementById("autoscroll-speed");
+let bootSpeed = SCROLL_DEFAULT;
 try {
-  const savedSpeed = parseInt(localStorage.getItem("autoscrollSpeed"), 10);
-  if (!Number.isNaN(savedSpeed)) { autoSpeed = savedSpeed; autoRange.value = String(savedSpeed); }
+  const saved = parseFloat(localStorage.getItem("autoscrollSpeed"));
+  if (!Number.isNaN(saved)) bootSpeed = saved;
 } catch {}
+autoRange.value = String(posFromSpeed(bootSpeed));               // place the notch
+setAutoSpeed(speedFromPos(parseInt(autoRange.value, 10)));       // sync speed + readout to it
 document.getElementById("autoscroll-toggle").addEventListener("click", () => setAutoOn(!autoOn));
-autoRange.addEventListener("input", () => setAutoSpeed(parseInt(autoRange.value, 10)));
+autoRange.addEventListener("input", () => setAutoSpeed(speedFromPos(parseInt(autoRange.value, 10))));
 try { setAutoOn(localStorage.getItem("autoscrollOn") === "1"); } catch { applyAutoUI(); }
 
 // one re-sync when you come back to the tab — not a poll
