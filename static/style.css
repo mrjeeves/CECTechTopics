@@ -342,6 +342,23 @@ body.jokes-collapsed .jokes-panel { display: none; }
 
 .jokes-count { color: var(--muted); font-weight: 400; font-size: 12px; }
 
+.jokes-refresh {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  width: 26px;
+  height: 26px;
+  line-height: 1;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.jokes-refresh:hover { color: var(--text); border-color: var(--muted); }
+
+.jokes-refresh.spinning { animation: spin 0.6s linear; }
+
 .jokes-body {
   flex: 1;
   display: flex;
