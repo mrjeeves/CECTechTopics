@@ -138,9 +138,17 @@ h1 { margin: 0; font-size: 22px; }
 }
 
 .autoscroll-speed {
-  width: 120px;
+  width: 150px;
   accent-color: var(--accent);
   cursor: pointer;
+}
+
+.autoscroll-readout {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 58px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .tab {
@@ -279,63 +287,66 @@ h1 { margin: 0; font-size: 22px; }
 .badge.highlighted { color: var(--gold); }
 .badge.declined { color: var(--red); }
 
-/* jokes carousel — fixed bottom-left overlay */
+/* jokes carousel — docked right sidebar; collapses to a thin spine so it
+   never covers the articles. The body reserves the gutter so nothing hides
+   under the fixed panel. */
+body { padding-right: 320px; }
+body.jokes-collapsed { padding-right: 36px; }
+
 .jokes {
   position: fixed;
-  left: 16px;
-  bottom: 16px;
-  width: 330px;
-  max-width: calc(100vw - 32px);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
-  z-index: 50;
+  border-left: 1px solid var(--border);
+}
+
+.jokes-toggle {
+  flex: 0 0 36px;
+  appearance: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: var(--panel-hover);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.jokes-toggle:hover { background: var(--border); }
+
+.jokes-panel {
+  width: 284px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
+
+body.jokes-collapsed .jokes-panel { display: none; }
 
 .jokes-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 12px;
-  background: var(--panel-hover);
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  user-select: none;
 }
-
-.jokes.collapsed .jokes-head { border-bottom: none; }
 
 .jokes-title { font-size: 14px; font-weight: 600; }
 
 .jokes-count { color: var(--muted); font-weight: 400; font-size: 12px; }
 
-.jokes-toggle {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--muted);
-  width: 24px;
-  height: 24px;
-  line-height: 1;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.jokes-toggle:hover { color: var(--text); border-color: var(--muted); }
-
 .jokes-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  max-height: 46vh;
   overflow-y: auto;
 }
-
-.jokes.collapsed .jokes-body { display: none; }
 
 .joke {
   background: var(--bg);

@@ -23,8 +23,9 @@
         <button id="autoscroll-toggle" class="btn autoscroll-toggle" role="switch"
                 aria-checked="false" title="ping-pong auto-scroll the feed">⤓ Auto-scroll</button>
         <input id="autoscroll-speed" class="autoscroll-speed" type="range"
-               min="10" max="600" step="10" value="80" title="scroll speed"
+               min="0" max="1000" step="1" value="400" title="scroll speed"
                aria-label="auto-scroll speed">
+        <span id="autoscroll-readout" class="autoscroll-readout"></span>
       </div>
     </div>
   </header>
@@ -32,11 +33,13 @@
   <main id="list" class="list"></main>
 
   <aside id="jokes" class="jokes">
-    <div id="jokes-head" class="jokes-head">
-      <span class="jokes-title">😂 Jokes <span id="jokes-count" class="jokes-count"></span></span>
-      <button id="jokes-toggle" class="jokes-toggle" title="show / hide jokes">–</button>
+    <button id="jokes-toggle" class="jokes-toggle" title="hide jokes" aria-expanded="true">😂</button>
+    <div class="jokes-panel">
+      <div class="jokes-head">
+        <span class="jokes-title">Jokes <span id="jokes-count" class="jokes-count"></span></span>
+      </div>
+      <div id="jokes-body" class="jokes-body"></div>
     </div>
-    <div id="jokes-body" class="jokes-body"></div>
   </aside>
 
   <script src="/static/app.js"></script>
