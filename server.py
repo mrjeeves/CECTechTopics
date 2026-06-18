@@ -185,12 +185,15 @@ class Handler(BaseHTTPRequestHandler):
 
         status = "laughed" if reaction == "laugh" else "passed"
         laugh_inc = 1 if reaction == "laugh" else 0
+        # Reacting is the host's last touch on a joke that was on stream, so stamp
+        # it as shown now — that starts its decay window before it can resurface.
+        now = db.utcnow_iso()
         conn = db.connect()
         try:
             with conn:
                 cur = conn.execute(
-                    "UPDATE jokes SET status = ?, decided_at = ?, laughs = laughs + ? WHERE id = ?",
-                    (status, db.utcnow_iso(), laugh_inc, joke_id),
+                    "UPDATE jokes SET status = ?, decided_at = ?, shown_at = ?, laughs = laughs + ? WHERE id = ?",
+                    (status, now, now, laugh_inc, joke_id),
                 )
                 row = (conn.execute("SELECT * FROM jokes WHERE id = ?", (joke_id,)).fetchone()
                        if cur.rowcount else None)

@@ -247,12 +247,14 @@ function renderFetch() {
 }
 
 // -- jokes carousel ----------------------------------------------------------
-// Shows 3 jokes at a time, rotating every few minutes (client-side, no polling).
-// Laugh keeps a joke (it may resurface on a later day); Pass bins it for good.
+// Shows 3 jokes at a time. The set never changes on its own — a joke only leaves
+// the carousel when a host reacts to it (Laugh keeps it for a later day; Pass
+// bins it for good), and a fresh one slides into the freed slot. Loading a new
+// pool reconciles against what's on screen, so refreshes and tab switches don't
+// reshuffle the jokes.
 
 const JOKE_SLOTS = 3;
-const JOKE_ROTATE_MS = 3 * 60 * 1000; // a few minutes per set of three
-const jokesState = { pool: [], slots: [], cursor: 0 };
+const jokesState = { pool: [], slots: [] };
 
 async function loadJokes() {
   try {
@@ -260,11 +262,10 @@ async function loadJokes() {
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     jokesState.pool = data.jokes || [];
-    jokesState.cursor = 0;
-    fillJokeSlots();
   } catch {
     return; // leave whatever's on screen
   }
+  syncJokeSlots();
   renderJokes();
 }
 
@@ -329,33 +330,35 @@ function renderJokesFetch() {
   } else status.textContent = "";
 }
 
-// Pull the next unused joke from the pool, cycling round; null if the pool is
-// smaller than the slots it needs to fill.
-function takeNextJoke(used) {
-  const pool = jokesState.pool;
-  if (pool.length === 0) return null;
-  for (let tries = 0; tries < pool.length; tries++) {
-    const joke = pool[jokesState.cursor % pool.length];
-    jokesState.cursor++;
-    if (!used.has(joke.id)) return joke;
-  }
-  return null;
+// First joke from the pool not already on screen, in priority order; null if
+// the pool is exhausted.
+function nextUnusedJoke(used) {
+  return jokesState.pool.find((j) => !used.has(j.id)) || null;
 }
 
-function fillJokeSlots() {
+// Reconcile the visible slots against a freshly loaded pool. Jokes already on
+// screen stay put (their data is refreshed in place); only empty slots get
+// filled. This keeps the carousel still through refreshes, tab switches, and
+// fetches — it changes only when a host reacts.
+function syncJokeSlots() {
+  const byId = new Map(jokesState.pool.map((j) => [j.id, j]));
   const used = new Set();
-  jokesState.slots = [];
+  const slots = [];
   for (let i = 0; i < JOKE_SLOTS; i++) {
-    const joke = takeNextJoke(used);
-    jokesState.slots.push(joke);
-    if (joke) used.add(joke.id);
+    const cur = jokesState.slots[i];
+    if (cur && byId.has(cur.id) && !used.has(cur.id)) {
+      slots.push(byId.get(cur.id));
+      used.add(cur.id);
+    } else {
+      slots.push(null);
+    }
   }
-}
-
-function rotateJokes() {
-  if (document.hidden || jokesState.pool.length <= JOKE_SLOTS) return;
-  fillJokeSlots();
-  renderJokes();
+  for (let i = 0; i < JOKE_SLOTS; i++) {
+    if (slots[i]) continue;
+    const next = nextUnusedJoke(used);
+    if (next) { slots[i] = next; used.add(next.id); }
+  }
+  jokesState.slots = slots;
 }
 
 async function reactJoke(id, reaction) {
@@ -370,7 +373,7 @@ async function reactJoke(id, reaction) {
   used.delete(id);
   jokesState.slots = jokesState.slots.map((j) => {
     if (j && j.id === id) {
-      const next = takeNextJoke(used);
+      const next = nextUnusedJoke(used);
       if (next) used.add(next.id);
       return next;
     }
@@ -513,7 +516,6 @@ document.getElementById("jokes-fetch").addEventListener("click", () => {
   if (jokesFetchBusy()) cancelJokesFetch(); else startJokesFetch();
 });
 try { if (localStorage.getItem("jokesCollapsed") === "1") toggleJokes(true); } catch {}
-setInterval(rotateJokes, JOKE_ROTATE_MS);
 
 const autoRange = document.getElementById("autoscroll-speed");
 let bootSpeed = SCROLL_DEFAULT;
