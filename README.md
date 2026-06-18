@@ -41,12 +41,15 @@ into the feedback the bot reads on its next fetch, so they directly steer
 future batches. On decided topics, edit the note and hit **Save note** (or
 Enter).
 
-The **😂 Jokes** sidebar shows 3 jokes at a time, rotating every few minutes.
-**Laugh** keeps a joke (it may resurface on a later day); **Pass** bins it for
-good. Its **⟳** button runs a jokes-only bot fetch to add fresh jokes (the
-carousel's equivalent of the topics Fetch — no topic run needed), and every
-topics fetch tops the pool up too. The DB keeps a rolling month and prunes
-older ones, and the 😂 spine collapses the sidebar when you need the width.
+The **😂 Jokes** sidebar shows 3 jokes at a time. The set holds still — a joke
+only changes when you react to it: **Laugh** keeps it (it may resurface a few
+days later) and **Pass** bins it for good, and a fresh one slides into the freed
+slot. Once a joke has been shown it sits out of rotation for a few days before it
+can come back, so the carousel doesn't repeat itself. Its **⟳** button runs a
+jokes-only bot fetch to add fresh jokes (the carousel's equivalent of the topics
+Fetch — no topic run needed), and every topics fetch tops the pool up too. The
+DB keeps a rolling month and prunes older ones, and the 😂 spine collapses the
+sidebar when you need the width.
 
 For hands-off display on stream, the **⤓ Auto-scroll** toggle in the tab row
 ping-pongs the feed down and back up at one steady speed; the slider next to it
@@ -57,9 +60,9 @@ The page is quiet by default — it talks to the server only when you click
 something (**↻ Refresh** re-pulls the list) or when you return to the tab.
 The exception: while a fetch job is running, it watches the job status every
 few seconds so the bar updates and the batch appears when it lands, then goes
-quiet again. The jokes rotate client-side with no polling. The research itself
-runs entirely server-side, so you can kick it off, close the browser, and find
-the results waiting later.
+quiet again. The jokes never auto-advance — they change only when you react. The
+research itself runs entirely server-side, so you can kick it off, close the
+browser, and find the results waiting later.
 
 No `just`? It's all plain stdlib underneath: `python3 server.py`.
 

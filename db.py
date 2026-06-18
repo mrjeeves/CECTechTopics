@@ -18,6 +18,9 @@ STATUSES = ("pending", "highlighted", "declined")
 # later day; passed jokes are binned. We keep a rolling month and prune older.
 JOKE_STATUSES = ("fresh", "laughed", "passed")
 JOKE_RETENTION_DAYS = 30
+# Once a joke has been shown on stream it sits out of rotation for a few days
+# before it can resurface, so the carousel doesn't repeat itself.
+JOKE_SHOWN_DECAY_DAYS = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS topics (
@@ -49,7 +52,8 @@ CREATE TABLE IF NOT EXISTS jokes (
     laughs      INTEGER NOT NULL DEFAULT 0,
     batch_id    TEXT NOT NULL DEFAULT '',
     created_at  TEXT NOT NULL,
-    decided_at  TEXT
+    decided_at  TEXT,
+    shown_at    TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_jokes_status ON jokes(status);
 CREATE INDEX IF NOT EXISTS idx_jokes_text_key ON jokes(text_key);
@@ -85,6 +89,14 @@ def _migrate(conn):
     if "reason" not in cols:
         conn.execute("ALTER TABLE topics ADD COLUMN reason TEXT NOT NULL DEFAULT ''")
         conn.commit()
+    jcols = {row["name"] for row in conn.execute("PRAGMA table_info(jokes)")}
+    if "shown_at" not in jcols:
+        conn.execute("ALTER TABLE jokes ADD COLUMN shown_at TEXT")
+        # Carry each reacted joke's decision time forward as its last-shown time
+        # so existing laughs serve out the new decay window instead of snapping
+        # straight back into rotation.
+        conn.execute("UPDATE jokes SET shown_at = decided_at WHERE decided_at IS NOT NULL")
+        conn.commit()
 
 
 def topic_dict(row):
@@ -119,15 +131,17 @@ def prune_jokes(conn, days=JOKE_RETENTION_DAYS):
 
 
 def eligible_jokes(conn, limit=60):
-    """Jokes the spinner may show: not binned, and laughed ones only resurface
-    on a day after they were laughed. Fresh first, then crowd-pleasers."""
+    """Jokes the carousel may show: not binned, and not shown in the last few
+    days. A joke decays for JOKE_SHOWN_DECAY_DAYS once shown before it's eligible
+    again, so it doesn't repeat. Fresh first, then crowd-pleasers."""
     return conn.execute(
         """SELECT * FROM jokes
            WHERE status != 'passed'
-             AND (status = 'fresh' OR decided_at IS NULL OR date(decided_at) < date('now'))
+             AND (shown_at IS NULL
+                  OR shown_at < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', ?))
            ORDER BY (status = 'fresh') DESC, laughs DESC, created_at DESC
            LIMIT ?""",
-        (limit,),
+        (f"-{JOKE_SHOWN_DECAY_DAYS} days", limit),
     ).fetchall()
 
 
